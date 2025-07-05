@@ -1,0 +1,195 @@
+The agent handles two main flows:
+
+Email response automation using ChatGPT.
+
+Feedback collection from the email recipient.
+
+🧩 NODE-BY-NODE BREAKDOWN
+✅ Email Response Flow
+On email received
+
+Type: gmailTrigger
+
+Purpose: Triggers the workflow when a new email is received.
+
+Identify trigger #1
+
+Type: set
+
+Purpose: Sets a variable triggeredFrom = gmail to label the path.
+
+Configure
+
+Type: set
+
+Purpose: Central configuration node. Includes settings like:
+
+spreadsheetName
+
+worksheetName
+
+recipients (can be * for all or specific emails)
+
+maxTokenSize and replyTokenSize
+
+Determine which trigger ran
+
+Type: switch
+
+Purpose: Decides whether the flow is coming from email or webhook (feedback).
+
+Only continue for specific emails
+
+Type: if
+
+Purpose: Checks if the email sender matches configured recipients.
+
+Generate UUID
+
+Type: uuid
+
+Purpose: Creates a unique ID for each email entry to track responses and feedback.
+
+Extract message content (advanced)
+
+Type: code
+
+Purpose: Extracts the clean email content (removing signatures, previous replies, etc.)
+
+Is text within token limit?
+
+Type: if
+
+Purpose: Ensures email text + response fits within the OpenAI token limit.
+
+Generate reply
+
+Type: openAi
+
+Purpose: Sends the cleaned email text to ChatGPT to generate a response.
+
+If reply is complete
+
+Type: if
+
+Purpose: Verifies if the OpenAI reply finished without truncation.
+
+Send email reply
+
+Type: noOp (placeholder)
+
+Follows into → Email template → Send reply to recipient
+
+Email template
+
+Type: formatting node
+
+Purpose: Prepares the HTML email including a feedback link.
+
+Send reply to recipient
+
+Type: gmail
+
+Purpose: Sends the AI-generated reply back to the original sender.
+
+Send reply to database
+
+Type: noOp (placeholder)
+
+Follows into → Format data
+
+Format data
+
+Type: set
+
+Purpose: Formats UUID, original message, and ChatGPT reply for Google Sheets.
+
+If no spreadsheet in configuration #1
+
+Type: if
+
+Purpose: Checks if spreadsheet ID is missing.
+
+Get sheet IDs #1
+
+Type: code
+
+Purpose: Gets stored sheet IDs from global static data.
+
+Store specific sheet IDs #1
+
+Type: code
+
+Purpose: Updates global static data with sheet IDs from the config.
+
+Create spreadsheet
+
+Type: googleSheets
+
+Purpose: Creates new sheet if not already present.
+
+Store spreadsheet ID
+
+Type: code
+
+Purpose: Stores newly created spreadsheet and worksheet ID to static data.
+
+Get data from Format data node
+
+Type: code
+
+Purpose: Fetches formatted data to append to sheet.
+
+Paste data
+
+Type: googleSheets
+
+Purpose: Appends new row to sheet with message + reply.
+
+💬 Feedback Flow (from feedback link in email)
+On feedback given
+
+Type: webhook
+
+Purpose: Gets triggered when recipient clicks a feedback link.
+
+Identify trigger #2
+
+Type: set
+
+Purpose: Sets triggeredFrom = webhook
+
+Determine which trigger ran
+
+Already handles webhook logic too.
+
+Record feedback
+
+Type: noOp (placeholder to process feedback)
+
+Thanks for your response!
+
+Type: responds to webhook with an HTML thank you page.
+
+If no spreadsheet in configuration #2
+
+Similar check like in main flow.
+
+Get sheet IDs #2 + Store specific sheet IDs #2
+
+Load and update sheet info for feedback path.
+
+Send feedback for fine-tuned data
+
+Type: noOp (placeholder for integrating feedback into training loop or logging).
+
+🧠 Summary: What the Agent Does
+Automatically replies to emails using ChatGPT.
+
+Filters which emails to respond to (based on settings).
+
+Saves the email and AI response in a Google Sheet.
+
+Includes a feedback link in the email.
+
+When clicked, it records the user feedback in the same sheet.
